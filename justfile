@@ -8,7 +8,7 @@
 #   just push node v0.3.1 "message"      # anywhere with `coder login`
 #   just release node v0.3.1 "message"   # build (if missing) + push + git tag
 
-templates := "node php-wordpress ops"
+templates := "node-js php-wordpress ops"
 
 default:
     @just --list
