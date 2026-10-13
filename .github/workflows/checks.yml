@@ -44,7 +44,9 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - run: just check-tags "${{ github.event.pull_request.base.sha }}"
+      - run: just check-tags "$BASE_SHA"
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
 
   images:
     uses: ./.github/workflows/build-images.yml

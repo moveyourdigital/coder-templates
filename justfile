@@ -22,7 +22,7 @@ lint:
     terraform fmt -check -recursive
     hadolint --config .hadolint.yaml */build/Dockerfile
     for f in */build/*.json; do python3 -m json.tool "$f" >/dev/null || exit 1; done
-    shellcheck tests/*.sh
+    shellcheck tests/*.sh scripts/*.sh
     actionlint
     zizmor -q --no-progress --min-severity low .github/workflows
     gitleaks dir . --no-banner --redact

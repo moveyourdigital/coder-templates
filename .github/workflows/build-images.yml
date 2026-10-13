@@ -88,7 +88,10 @@ jobs:
 
       - name: Smoke test (tools, policy, code-server)
         if: steps.exists.outputs.exists == 'false'
-        run: tests/smoke.sh "${{ matrix.template }}" "${{ steps.ref.outputs.image }}"
+        env:
+          TEMPLATE: ${{ matrix.template }}
+          IMAGE: ${{ steps.ref.outputs.image }}
+        run: tests/smoke.sh "$TEMPLATE" "$IMAGE"
 
       - name: Push
         if: inputs.push && steps.exists.outputs.exists == 'false'
