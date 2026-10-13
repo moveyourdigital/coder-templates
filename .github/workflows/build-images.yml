@@ -27,12 +27,10 @@ jobs:
 
       - name: Read image reference from main.tf
         id: ref
+        env:
+          TEMPLATE: ${{ matrix.template }}
         run: |
-          image="$(grep -oE 'ghcr\.io/moveyourdigital/coder-workspace-[a-z-]+:[^"]+' "${{ matrix.template }}/main.tf" | head -1)"
-          if [ -z "$image" ]; then
-            echo "::error::No ghcr.io image reference in ${{ matrix.template }}/main.tf"
-            exit 1
-          fi
+          image="$(scripts/image-ref.sh "$TEMPLATE/main.tf")"
           echo "image=$image" >> "$GITHUB_OUTPUT"
           echo "Image: $image"
 
@@ -44,8 +42,12 @@ jobs:
 
       - name: Skip if the tag already exists
         id: exists
+        env:
+          IMAGE: ${{ steps.ref.outputs.image }}
         run: |
-          if docker manifest inspect "${{ steps.ref.outputs.image }}" >/dev/null 2>&1; then
+          # Fails (exit 2) on registry errors: never build/push on a guess.
+          state="$(scripts/image-state.sh "$IMAGE")"
+          if [ "$state" = present ]; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
             echo "Tag exists, nothing to build."
           else
@@ -73,13 +75,17 @@ jobs:
 
       - name: Scan with trivy (fail on fixable CRITICAL)
         if: steps.exists.outputs.exists == 'false'
+        env:
+          IMAGE: ${{ steps.ref.outputs.image }}
         run: |
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
             aquasec/trivy:0.75.0 image \
             --scanners vuln --severity CRITICAL --ignore-unfixed --exit-code 1 \
-            --no-progress "${{ steps.ref.outputs.image }}"
+            --no-progress "$IMAGE"
 
       - name: Push
         if: inputs.push && steps.exists.outputs.exists == 'false'
-        run: docker push "${{ steps.ref.outputs.image }}"
+        env:
+          IMAGE: ${{ steps.ref.outputs.image }}
+        run: docker push "$IMAGE"

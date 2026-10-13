@@ -43,21 +43,24 @@ check-tags base="origin/main":
     #!/usr/bin/env bash
     set -euo pipefail
     err() { if [ -n "${GITHUB_ACTIONS:-}" ]; then echo "::error file=$1::$2"; else echo "error: $2" >&2; fi; }
-    re='ghcr\.io/moveyourdigital/coder-workspace-[a-z-]+:[^"]+'
     fail=0
     for t in {{templates}}; do
       new="$(just image "$t")"
-      old="$(git show "{{base}}:$t/main.tf" 2>/dev/null | grep -oE "$re" | head -1 || true)"
+      old="$(git show "{{base}}:$t/main.tf" 2>/dev/null | scripts/image-ref.sh - 2>/dev/null || true)"
       if [ "$new" = "$old" ]; then
         if git diff --quiet "{{base}}...HEAD" -- "$t/build"; then
           echo "ok: $t (unchanged: $new)"
         else
           err "$t/main.tf" "$t/build changed, but the image tag did not: $new"; fail=1
         fi
-      elif docker manifest inspect "$new" >/dev/null 2>&1; then
-        err "$t/main.tf" "tag already in GHCR (tags are immutable): $new"; fail=1
       else
-        echo "ok: $t (new tag: $new)"
+        # Fail closed: only an explicit "absent" counts as a new tag.
+        state="$(scripts/image-state.sh "$new")" || { err "$t/main.tf" "cannot check $new in GHCR"; fail=1; continue; }
+        if [ "$state" = present ]; then
+          err "$t/main.tf" "tag already in GHCR (tags are immutable): $new"; fail=1
+        else
+          echo "ok: $t (new tag: $new)"
+        fi
       fi
     done
     exit "$fail"
@@ -65,13 +68,16 @@ check-tags base="origin/main":
 # Image used by a template (from main.tf)
 image t:
     @just _known {{t}}
-    @grep -oE 'ghcr\.io/moveyourdigital/coder-workspace-[a-z-]+:[^"]+' {{t}}/main.tf | head -1
+    @scripts/image-ref.sh {{t}}/main.tf
 
 # True if the image exists in GHCR
 image-exists t:
-    @docker manifest inspect "$(just image {{t}})" >/dev/null 2>&1 \
-      && echo "present: $(just image {{t}})" \
-      || (echo "missing: $(just image {{t}})" >&2; exit 1)
+    #!/usr/bin/env bash
+    set -euo pipefail
+    img="$(just image {{t}})"
+    state="$(scripts/image-state.sh "$img")"
+    echo "$state: $img"
+    [ "$state" = present ]
 
 # Wait (up to 30 min) until CI has pushed the image
 wait-image t:
@@ -79,7 +85,7 @@ wait-image t:
     set -euo pipefail
     img="$(just image {{t}})"
     for i in $(seq 1 60); do
-      docker manifest inspect "$img" >/dev/null 2>&1 && { echo "present: $img"; exit 0; }
+      [ "$(scripts/image-state.sh "$img")" = present ] && { echo "present: $img"; exit 0; }
       echo "waiting for $img ($i/60)"; sleep 30
     done
     echo "timeout: $img not in registry" >&2; exit 1
