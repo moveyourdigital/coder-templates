@@ -4,6 +4,8 @@
 # Patch versions (main.tf only) keep the image tag; minor/major bump it.
 #
 #   just lint
+#   just validate                          # terraform validate each template
+#   just check-tags                        # build/ changed => new image tag
 #   just image node-js                     # image used by the template
 #   just wait-image node-js                # wait until CI has pushed it
 #   just release node-js v0.4.1 "message"  # check image, push template, git tag
@@ -14,12 +16,51 @@ templates := "node-js php-wordpress ops"
 default:
     @just --list
 
-# Check formatting, Dockerfiles, JSON and secrets
+# Check formatting, Dockerfiles, JSON, workflows and secrets
 lint:
     terraform fmt -check -recursive
     hadolint --config .hadolint.yaml */build/Dockerfile
     for f in */build/*.json; do python3 -m json.tool "$f" >/dev/null || exit 1; done
+    actionlint
     gitleaks dir . --no-banner --redact
+
+# terraform validate each template (in a temp copy: no lock file left behind)
+validate:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export TF_PLUGIN_CACHE_DIR="${TF_PLUGIN_CACHE_DIR:-$HOME/.terraform.d/plugin-cache}"
+    mkdir -p "$TF_PLUGIN_CACHE_DIR"
+    work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT
+    for t in {{templates}}; do
+      mkdir "$work/$t" && cp "$t"/*.tf "$work/$t"/
+      terraform -chdir="$work/$t" init -backend=false -input=false >/dev/null
+      terraform -chdir="$work/$t" validate -no-color >/dev/null
+      echo "valid: $t"
+    done
+
+# A change under build/ needs a new image tag that is not in GHCR yet
+check-tags base="origin/main":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    err() { if [ -n "${GITHUB_ACTIONS:-}" ]; then echo "::error file=$1::$2"; else echo "error: $2" >&2; fi; }
+    re='ghcr\.io/moveyourdigital/coder-workspace-[a-z-]+:[^"]+'
+    fail=0
+    for t in {{templates}}; do
+      new="$(just image "$t")"
+      old="$(git show "{{base}}:$t/main.tf" 2>/dev/null | grep -oE "$re" | head -1 || true)"
+      if [ "$new" = "$old" ]; then
+        if git diff --quiet "{{base}}...HEAD" -- "$t/build"; then
+          echo "ok: $t (unchanged: $new)"
+        else
+          err "$t/main.tf" "$t/build changed, but the image tag did not: $new"; fail=1
+        fi
+      elif docker manifest inspect "$new" >/dev/null 2>&1; then
+        err "$t/main.tf" "tag already in GHCR (tags are immutable): $new"; fail=1
+      else
+        echo "ok: $t (new tag: $new)"
+      fi
+    done
+    exit "$fail"
 
 # Image used by a template (from main.tf)
 image t:
