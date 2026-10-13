@@ -1,43 +1,66 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests"
+  ],
   "minimumReleaseAge": "14 days",
-  "labels": ["dependencies"],
+  "labels": [
+    "dependencies"
+  ],
   "customManagers": [
     {
       "customType": "regex",
       "description": "code-server version in the Dockerfiles",
-      "managerFilePatterns": ["/(^|/)build/Dockerfile$/"],
-      "matchStrings": ["ARG CODE_SERVER_VERSION=(?<currentValue>\\S+)"],
+      "managerFilePatterns": [
+        "/(^|/)build/Dockerfile$/"
+      ],
+      "matchStrings": [
+        "ARG CODE_SERVER_VERSION=(?<currentValue>\\S+)"
+      ],
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "coder/code-server",
       "extractVersionTemplate": "^v(?<version>.+)$"
     },
     {
       "customType": "regex",
-      "description": "trivy image in the workflows",
-      "managerFilePatterns": ["/^\\.github/workflows/.+\\.yml$/"],
-      "matchStrings": ["(?<depName>aquasec/trivy):(?<currentValue>[0-9][^\\s\"]*)"],
+      "description": "trivy image (tag and digest) in the workflows",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/.+\\.yml$/"
+      ],
+      "matchStrings": [
+        "(?<depName>aquasec/trivy):(?<currentValue>[0-9][^\\s@\"]*)@(?<currentDigest>sha256:[a-f0-9]{64})"
+      ],
       "datasourceTemplate": "docker"
     }
   ],
   "packageRules": [
     {
       "description": "One PR for all templates. A change under build/ needs a new image tag in main.tf (check-tags fails until then).",
-      "matchFileNames": ["*/build/**"],
+      "matchFileNames": [
+        "*/build/**"
+      ],
       "groupName": "workspace images",
-      "prBodyNotes": ["Bump the image tag in each changed `<template>/main.tf` before merging."]
+      "prBodyNotes": [
+        "Bump the image tag in each changed `<template>/main.tf` before merging."
+      ]
     },
     {
-      "matchManagers": ["github-actions"],
+      "matchManagers": [
+        "github-actions"
+      ],
       "groupName": "github actions"
     },
     {
-      "matchManagers": ["mise"],
+      "matchManagers": [
+        "mise"
+      ],
       "groupName": "dev tools"
     },
     {
-      "matchManagers": ["terraform"],
+      "matchManagers": [
+        "terraform"
+      ],
       "groupName": "terraform providers"
     }
   ]

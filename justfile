@@ -17,13 +17,14 @@ templates := "node-js php-wordpress ops"
 default:
     @just --list
 
-# Check formatting, Dockerfiles, JSON, scripts, workflows and secrets
+# Check formatting, Dockerfiles, JSON, scripts, workflows, Renovate config and secrets
 lint:
     terraform fmt -check -recursive
     hadolint --config .hadolint.yaml */build/Dockerfile
     for f in */build/*.json; do python3 -m json.tool "$f" >/dev/null || exit 1; done
     shellcheck tests/*.sh scripts/*.sh
     actionlint
+    check-jsonschema --builtin-schema vendor.renovate renovate.json
     zizmor -q --no-progress --min-severity low .github/workflows
     gitleaks dir . --no-banner --redact
 

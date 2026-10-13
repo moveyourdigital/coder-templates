@@ -23,10 +23,10 @@ common='
   code-server --version | sed -n 1p
   code-server --auth none --bind-addr 127.0.0.1:13337 >/tmp/cs.log 2>&1 &
   for _ in $(seq 1 30); do
-    curl -fs -o /dev/null 127.0.0.1:13337/healthz && break
+    curl -fs --connect-timeout 2 --max-time 5 -o /dev/null 127.0.0.1:13337/healthz && break
     sleep 1
   done
-  curl -fs -o /dev/null 127.0.0.1:13337/ || { cat /tmp/cs.log >&2; exit 1; }
+  curl -fs --connect-timeout 2 --max-time 10 -o /dev/null 127.0.0.1:13337/ || { cat /tmp/cs.log >&2; exit 1; }
   echo "code-server: ok"
 '
 
