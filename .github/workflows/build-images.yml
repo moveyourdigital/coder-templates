@@ -1,0 +1,91 @@
+# Reusable: build, scan and (optionally) push the workspace images.
+#
+# Called by images.yml (push to main, push: true) and checks.yml
+# (pull request, push: false). A tag that already exists in GHCR is skipped,
+# so a pull request builds and scans only images with a new tag.
+
+name: build-images
+
+on:
+  workflow_call:
+    inputs:
+      push:
+        description: Push the images to GHCR
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        template: [node-js, php-wordpress, ops]
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read image reference from main.tf
+        id: ref
+        env:
+          TEMPLATE: ${{ matrix.template }}
+        run: |
+          image="$(scripts/image-ref.sh "$TEMPLATE/main.tf")"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "Image: $image"
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Skip if the tag already exists
+        id: exists
+        env:
+          IMAGE: ${{ steps.ref.outputs.image }}
+        run: |
+          # Fails (exit 2) on registry errors: never build/push on a guess.
+          state="$(scripts/image-state.sh "$IMAGE")"
+          if [ "$state" = present ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Tag exists, nothing to build."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: docker/setup-buildx-action@v4
+        if: steps.exists.outputs.exists == 'false'
+
+      - name: Build (load locally for the scan)
+        if: steps.exists.outputs.exists == 'false'
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.template }}/build
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: ${{ steps.ref.outputs.image }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.title=coder-workspace-${{ matrix.template }}
+          cache-from: type=gha,scope=${{ matrix.template }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.template }}
+
+      - name: Scan with trivy (fail on fixable CRITICAL)
+        if: steps.exists.outputs.exists == 'false'
+        env:
+          IMAGE: ${{ steps.ref.outputs.image }}
+        run: |
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:0.75.0 image \
+            --scanners vuln --severity CRITICAL --ignore-unfixed --exit-code 1 \
+            --no-progress "$IMAGE"
+
+      - name: Push
+        if: inputs.push && steps.exists.outputs.exists == 'false'
+        env:
+          IMAGE: ${{ steps.ref.outputs.image }}
+        run: docker push "$IMAGE"

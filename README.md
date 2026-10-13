@@ -43,8 +43,10 @@ The image tag is set in `main.tf` (`docker_image.workspace.name`).
 Prerequisites: an `ops` workspace (or any machine) with `git`, `just`,
 `docker` (for `just wait-image`) and `coder login`.
 
-1. Create a branch, make the change, run `just lint`, open a pull request.
-2. For a change under `build/`: bump the image tag in `main.tf`.
+1. Create a branch, make the change, run `just lint` and `just validate`,
+   open a pull request.
+2. For a change under `build/`: bump the image tag in `main.tf`
+   (`just check-tags` checks this).
 3. After the merge: wait for the `images` workflow:
    ```bash
    just wait-image node-js
@@ -73,6 +75,18 @@ extra_git_hosts: <git-host>   # space-separated, added to known_hosts
 ```
 
 Every template must declare each variable in the file.
+
+## Pull request checks
+
+`.github/workflows/checks.yml` runs on each pull request to `main`
+(read-only, nothing is pushed):
+
+- `checks`: `just lint` and `just validate`, with the tools from `.mise.toml`.
+- `image-tag`: `just check-tags`. A change under `build/` needs a new image
+  tag, and the new tag must not be in GHCR yet.
+- `images`: builds and scans with trivy each image that has a new tag.
+
+Make these checks required in the branch protection of `main`.
 
 ## Images
 
