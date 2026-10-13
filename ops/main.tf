@@ -339,7 +339,7 @@ resource "docker_image" "workspace" {
   # with BuildKit, which this provider cannot drive):
   #   docker build -t <name> /root/coder-images/ops/build
   # Change the tag on each rebuild.
-  name         = "coder-workspace-ops:v0.2.0"
+  name         = "coder-workspace-ops:v0.3.0"
   keep_locally = true
 }
 

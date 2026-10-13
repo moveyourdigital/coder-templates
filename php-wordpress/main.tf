@@ -306,7 +306,7 @@ resource "docker_image" "workspace" {
   # with BuildKit, which this provider cannot drive):
   #   docker build -t <name> /root/coder-images/php-wordpress/build
   # Change the tag on each rebuild.
-  name         = "coder-workspace-php-wordpress:v0.3.1"
+  name         = "coder-workspace-php-wordpress:v0.4.0"
   keep_locally = true
 }
 
