@@ -36,7 +36,7 @@ RUN install -m 0755 -d /etc/apt/keyrings \
   && apt-mark hold docker-ce docker-ce-cli containerd.io \
   && rm -rf /var/lib/apt/lists/*
 
-COPY daemon.json /etc/docker/daemon.json
+COPY --chmod=0644 daemon.json /etc/docker/daemon.json
 
 # --- GitHub CLI -------------------------------------------------------------
 RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
@@ -75,7 +75,7 @@ RUN curl -fsSL "https://github.com/coder/code-server/releases/download/v${CODE_S
   && ln -sf /usr/bin/code-server /usr/local/bin/code-server
 
 # --- Claude Code managed policy ---------------------------------------------
-COPY managed-settings.json /etc/claude-code/managed-settings.json
+COPY --chmod=0644 managed-settings.json /etc/claude-code/managed-settings.json
 
 # --- coder user -------------------------------------------
 # UID 1000 must stay: existing home volumes are owned by 1000.
