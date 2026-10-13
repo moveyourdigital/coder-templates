@@ -70,6 +70,9 @@ RUN d=/usr/lib/code-server/lib/vscode/node_modules/shell-quote \
   && rm -f /tmp/shell-quote.tgz
 
 # --- Claude Code managed policy ---------------------------------------------
+# Create the directory first: COPY --chmod also applies to parent directories
+# it creates (0644 without x), and then coder cannot read the file.
+RUN install -d -m 0755 /etc/claude-code
 COPY --chmod=0644 managed-settings.json /etc/claude-code/managed-settings.json
 
 # --- coder user -------------------------------------------
