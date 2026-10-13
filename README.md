@@ -59,9 +59,20 @@ Prerequisites: an `ops` workspace (or any machine) with `git`, `just`,
 
 Other commands: `just --list`.
 
-Template variable `extra_git_hosts` (optional): extra Git hosts for
-`known_hosts`, space-separated. Set it on a push, for example
-`coder templates push <t> -d <t> --variable extra_git_hosts="<git-host>"`.
+### Template variables
+
+Values for Terraform variables live in `vars.yaml` (repository root, not in
+Git). `just push` and `just release` pass it with `--variables-file` when it
+exists. Coder does not keep values between versions: a push without a value
+resets the variable to its default.
+
+Create it once on each machine you release from (see `vars.example.yaml`):
+
+```yaml
+extra_git_hosts: <git-host>   # space-separated, added to known_hosts
+```
+
+Every template must declare each variable in the file.
 
 ## Images
 

@@ -43,10 +43,11 @@ wait-image t:
     done
     echo "timeout: $img not in registry" >&2; exit 1
 
-# Publish a template version in Coder
+# Publish a template version in Coder (with vars.yaml if it exists)
 push t version msg:
     @just _known {{t}}
-    coder templates push {{t}} -d {{t}} --name {{version}} --yes --message "{{msg}}"
+    coder templates push {{t}} -d {{t}} --name {{version}} --yes --message "{{msg}}" \
+      $(test -f vars.yaml && echo --variables-file vars.yaml)
 
 # Image must exist in GHCR; then push template + git tag <template>/<version>
 release t version msg:

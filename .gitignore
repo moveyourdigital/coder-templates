@@ -10,6 +10,7 @@ crash.log
 .env.*
 *.pem
 *.key
+vars.yaml
 
 # Editors / OS
 .DS_Store
