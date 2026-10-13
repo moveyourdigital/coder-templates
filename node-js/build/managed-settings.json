@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "disableBypassPermissionsMode": "disable",
+    "deny": [
+      "Bash(sudo:*)",
+      "Read(/etc/claude-code/**)"
+    ]
+  }
+}
