@@ -7,7 +7,7 @@ terraform {
     # v4 builds with buildx over the local socket and ignores "host".
     docker = {
       source  = "kreuzwerker/docker"
-      version = "~> 3.6"
+      version = "~> 4.0"
     }
   }
 }
