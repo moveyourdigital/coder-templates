@@ -82,11 +82,25 @@ Every template must declare each variable in the file.
 (read-only, nothing is pushed):
 
 - `checks`: `just lint` and `just validate`, with the tools from `.mise.toml`.
+  `just lint` includes `shellcheck`, `actionlint` and `zizmor` (security
+  audit of the workflows; actions are pinned by commit SHA).
 - `image-tag`: `just check-tags`. A change under `build/` needs a new image
   tag, and the new tag must not be in GHCR yet.
-- `images`: builds and scans with trivy each image that has a new tag.
+- `images`: builds each image that has a new tag, scans it with trivy and
+  runs `tests/smoke.sh` (tools, Claude Code policy readable by `coder`,
+  code-server starts). Locally: `just build-local <t>`, then `just smoke <t>`.
 
 Make these checks required in the branch protection of `main`.
+
+## Scheduled scan and updates
+
+- `.github/workflows/scan.yml` scans the published images (the tags in
+  `main.tf`) with trivy every Monday. New CVEs appear after a build. A failure
+  means: fix `build/`, bump the tag, release.
+- Renovate (`renovate.json`) opens update PRs for GitHub Actions (SHA pins),
+  the base image, code-server, trivy, `.mise.toml` tools and Terraform
+  providers, 14 days after release. A PR that changes `build/` needs a new
+  image tag in `main.tf` before the merge (`image-tag` fails until then).
 
 ## Images
 

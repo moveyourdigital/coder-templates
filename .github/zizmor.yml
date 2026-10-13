@@ -1,0 +1,5 @@
+# zizmor config (just lint).
+rules:
+  # Wants "$/..." for local reusable workflows; actionlint does not accept it yet.
+  self-repository:
+    disable: true

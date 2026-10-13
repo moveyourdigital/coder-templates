@@ -10,18 +10,22 @@
 #   just wait-image node-js                # wait until CI has pushed it
 #   just release node-js v0.4.1 "message"  # check image, push template, git tag
 #   just build-local node-js               # optional local test build
+#   just smoke node-js                     # smoke test the image
 
 templates := "node-js php-wordpress ops"
 
 default:
     @just --list
 
-# Check formatting, Dockerfiles, JSON, workflows and secrets
+# Check formatting, Dockerfiles, JSON, scripts, workflows, Renovate config and secrets
 lint:
     terraform fmt -check -recursive
     hadolint --config .hadolint.yaml */build/Dockerfile
     for f in */build/*.json; do python3 -m json.tool "$f" >/dev/null || exit 1; done
+    shellcheck tests/*.sh scripts/*.sh
     actionlint
+    check-jsonschema --builtin-schema vendor.renovate renovate.json
+    zizmor -q --no-progress --min-severity low .github/workflows
     gitleaks dir . --no-banner --redact
 
 # terraform validate each template (in a temp copy: no lock file left behind)
@@ -109,6 +113,11 @@ release t version msg:
 build-local t:
     @just _known {{t}}
     docker build -t "$(just image {{t}})" {{t}}/build
+
+# Smoke test an image (default: the local build of the main.tf tag)
+smoke t image="":
+    @just _known {{t}}
+    tests/smoke.sh {{t}} "{{ if image == "" { "$(just image " + t + ")" } else { image } }}"
 
 _known t:
     @echo " {{templates}} " | grep -q " {{t}} " || (echo "Unknown template: {{t}}" >&2; exit 1)

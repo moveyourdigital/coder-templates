@@ -1,0 +1,52 @@
+# Weekly trivy scan of the published images (the tags in main.tf).
+# New CVEs appear after an image is built. Tags are immutable, so a failure
+# here means: fix build/, bump the tag in main.tf, release.
+
+name: scan
+
+on:
+  schedule:
+    - cron: "17 5 * * 1"   # Monday 05:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        template: [node-js, php-wordpress, ops]
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read image reference from main.tf
+        id: ref
+        env:
+          TEMPLATE: ${{ matrix.template }}
+        run: |
+          image="$(scripts/image-ref.sh "$TEMPLATE/main.tf")"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Scan with trivy (fail on fixable CRITICAL)
+        env:
+          IMAGE: ${{ steps.ref.outputs.image }}
+        run: |
+          docker pull -q "$IMAGE"
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa image \
+            --scanners vuln --severity CRITICAL --ignore-unfixed --exit-code 1 \
+            --no-progress "$IMAGE"
