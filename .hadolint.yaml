@@ -1,0 +1,3 @@
+ignored:
+  - DL3008   # apt pinning: Ubuntu removes old versions; images are pinned by tag
+  - DL3066   # USER by name; UID 1000 is fixed in useradd

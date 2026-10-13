@@ -16,7 +16,7 @@ default:
 # Check formatting, Dockerfiles, JSON and secrets
 lint:
     terraform fmt -check -recursive
-    hadolint */build/Dockerfile
+    hadolint --config .hadolint.yaml */build/Dockerfile
     for f in */build/*.json; do python3 -m json.tool "$f" >/dev/null || exit 1; done
     gitleaks dir . --no-banner --redact
 

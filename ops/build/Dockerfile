@@ -4,6 +4,8 @@
 
 FROM ubuntu:24.04
 
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
 ENV DEBIAN_FRONTEND=noninteractive \
     TZ=Europe/Lisbon \
     LANG=en_US.UTF-8 \
