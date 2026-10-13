@@ -7,9 +7,9 @@ own Docker daemon, with no access to the host Docker socket.
 
 | Template | For | Image |
 |---|---|---|
-| [`node`](node/) | Node.js LTS / Next.js | `coder-workspace-node` |
-| [`php-wordpress`](php-wordpress/) | PHP 8.3 / WordPress | `coder-workspace-php-wordpress` |
-| [`ops`](ops/) | Infrastructure and GitOps (owner only) | `coder-workspace-ops` |
+| [`node-js`](node-js/) | Node.js LTS / Next.js | `ghcr.io/moveyourdigital/coder-workspace-node` |
+| [`php-wordpress`](php-wordpress/) | PHP 8.3 / WordPress | `ghcr.io/moveyourdigital/coder-workspace-php-wordpress` |
+| [`ops`](ops/) | Infrastructure and GitOps (owner only) | `ghcr.io/moveyourdigital/coder-workspace-ops` |
 
 **This repository is the source of truth.** Do not edit templates in the
 Coder UI. A change made there is lost on the next push from Git.
@@ -28,7 +28,7 @@ Coder UI. A change made there is lost on the next push from Git.
 ## Versions
 
 Template versions use `vMAJOR.MINOR.PATCH`. Each published version has a Git
-tag `<template>/<version>`, for example `node/v0.3.1`.
+tag `<template>/<version>`, for example `node-js/v0.4.1`.
 
 | Change | Version | Image tag |
 |---|---|---|
@@ -40,31 +40,40 @@ The image tag is set in `main.tf` (`docker_image.workspace.name`).
 
 ## Workflow
 
-Prerequisites: an `ops` workspace (or any machine) with `git`, `just` and
-`coder login`; image builds run on `x1-hel1`.
+Prerequisites: an `ops` workspace (or any machine) with `git`, `just`,
+`docker` (for `just wait-image`) and `coder login`.
 
-1. Create a branch, make the change, run `just lint`.
-2. For a minor/major version: change the image tag in `main.tf`.
-3. Commit and merge to `main`.
-4. On `x1-hel1`, in an up-to-date clone:
+1. Create a branch, make the change, run `just lint`, open a pull request.
+2. For a change under `build/`: bump the image tag in `main.tf`.
+3. After the merge: wait for the `images` workflow:
    ```bash
-   just release node v0.3.0 "Short description of the change"
+   just wait-image node-js
    ```
-   This builds the image if it does not exist, publishes the template
+4. Publish the template version and push the Git tag:
+   ```bash
+   just release node-js v0.4.1 "Short description of the change"
+   ```
+   This checks that the image exists in GHCR, publishes the template
    version, and pushes the Git tag.
 5. Update the workspaces (Coder dashboard → Update, or `coder update <ws>`).
 
 Other commands: `just --list`.
 
-## Why images are prebuilt
+## Images
 
-Docker on `x1-hel1` uses the containerd image store, which builds only with
-BuildKit. The Terraform `kreuzwerker/docker` provider (v3) cannot open a
-BuildKit session, and v4 builds through the local socket only. So images are
-built on `x1-hel1` and the templates reference them by tag.
-
-Planned: a CI job builds the images, pushes them to the registry and publishes
-the template versions.
+- Built by GitHub Actions (`.github/workflows/images.yml`) on push to `main`
+  when `*/build/**` or `*/main.tf` changes (also by manual dispatch).
+- Pushed to GHCR as `ghcr.io/moveyourdigital/coder-workspace-<name>:<tag>`
+  (public packages). The templates pull the image from there.
+- Scanned with trivy before the push. The build fails on a fixable CRITICAL
+  vulnerability.
+- Tags are immutable. An existing tag is never rebuilt: a change under
+  `build/` needs a new tag in `main.tf`.
+- The workflow uses only `GITHUB_TOKEN`. No secrets in the repo or images.
+- Images are not built in Terraform: Docker on `x1-hel1` uses the containerd
+  image store (BuildKit only), and the `kreuzwerker/docker` provider (v3)
+  cannot open a BuildKit session.
+- To test a Dockerfile locally: `just build-local <template>`.
 
 ## Host requirements (x1-hel1)
 

@@ -1,12 +1,13 @@
-# Coder templates — build images on x1-hel1 and publish template versions.
+# Coder templates — images are built by GitHub Actions and pushed to GHCR.
 #
-# The image tag lives in <template>/main.tf (docker_image.workspace.name).
+# The image reference is in <template>/main.tf (docker_image.workspace.name).
 # Patch versions (main.tf only) keep the image tag; minor/major bump it.
 #
 #   just lint
-#   just build node-js                      # on x1-hel1: builds the tag from main.tf
-#   just push node-js v0.3.1 "message"      # anywhere with `coder login`
-#   just release node-js v0.3.1 "message"   # build (if missing) + push + git tag
+#   just image node-js                     # image used by the template
+#   just wait-image node-js                # wait until CI has pushed it
+#   just release node-js v0.4.1 "message"  # check image, push template, git tag
+#   just build-local node-js               # optional local test build
 
 templates := "node-js php-wordpress ops"
 
@@ -23,30 +24,43 @@ lint:
 # Image used by a template (from main.tf)
 image t:
     @just _known {{t}}
-    @grep -oE 'coder-workspace-[a-z-]+:[^"]+' {{t}}/main.tf
+    @grep -oE 'ghcr\.io/moveyourdigital/coder-workspace-[a-z-]+:[^"]+' {{t}}/main.tf | head -1
 
-# Build the image named in main.tf (run on x1-hel1)
-build t:
-    @just _known {{t}}
-    docker build -t "$(just image {{t}})" {{t}}/build
+# True if the image exists in GHCR
+image-exists t:
+    @docker manifest inspect "$(just image {{t}})" >/dev/null 2>&1 \
+      && echo "present: $(just image {{t}})" \
+      || (echo "missing: $(just image {{t}})" >&2; exit 1)
 
-# Build only if the image does not exist yet on this host
-ensure-image t:
-    @just _known {{t}}
-    docker image inspect "$(just image {{t}})" >/dev/null 2>&1 || just build {{t}}
+# Wait (up to 30 min) until CI has pushed the image
+wait-image t:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    img="$(just image {{t}})"
+    for i in $(seq 1 60); do
+      docker manifest inspect "$img" >/dev/null 2>&1 && { echo "present: $img"; exit 0; }
+      echo "waiting for $img ($i/60)"; sleep 30
+    done
+    echo "timeout: $img not in registry" >&2; exit 1
 
-# Publish a template version
+# Publish a template version in Coder
 push t version msg:
     @just _known {{t}}
     coder templates push {{t}} -d {{t}} --name {{version}} --yes --message "{{msg}}"
 
-# ensure-image + push + git tag <template>/<version> (run on x1-hel1)
+# Image must exist in GHCR; then push template + git tag <template>/<version>
 release t version msg:
     @test -z "$(git status --porcelain)" || (echo "Commit your changes first" >&2; exit 1)
-    just ensure-image {{t}}
+    @test "$(git rev-parse HEAD)" = "$(git rev-parse @{u})" || (echo "Push to origin first" >&2; exit 1)
+    just image-exists {{t}}
     just push {{t}} {{version}} "{{msg}}"
     git tag -a {{t}}/{{version}} -m "{{msg}}"
     git push origin {{t}}/{{version}}
+
+# Optional: build the image locally (inner Docker) to test a Dockerfile
+build-local t:
+    @just _known {{t}}
+    docker build -t "$(just image {{t}})" {{t}}/build
 
 _known t:
     @echo " {{templates}} " | grep -q " {{t}} " || (echo "Unknown template: {{t}}" >&2; exit 1)
