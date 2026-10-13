@@ -4,9 +4,9 @@
 # Patch versions (main.tf only) keep the image tag; minor/major bump it.
 #
 #   just lint
-#   just build node                      # on x1-hel1: builds the tag from main.tf
-#   just push node v0.3.1 "message"      # anywhere with `coder login`
-#   just release node v0.3.1 "message"   # build (if missing) + push + git tag
+#   just build node-js                      # on x1-hel1: builds the tag from main.tf
+#   just push node-js v0.3.1 "message"      # anywhere with `coder login`
+#   just release node-js v0.3.1 "message"   # build (if missing) + push + git tag
 
 templates := "node-js php-wordpress ops"
 
