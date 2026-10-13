@@ -316,7 +316,7 @@ resource "docker_image" "workspace" {
   # Built from build/ by GitHub Actions (.github/workflows/images.yml) and
   # pushed to GHCR. Not built on x1-hel1. Tags are immutable: a change under
   # build/ needs a new tag here.
-  name         = "ghcr.io/moveyourdigital/coder-workspace-php-wordpress:v0.4.0"
+  name         = "ghcr.io/moveyourdigital/coder-workspace-php-wordpress:v0.5.0"
   keep_locally = true
 }
 
