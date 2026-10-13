@@ -1,6 +1,6 @@
-# Coder templates — Move Your Digital
+# Coder templates
 
-Templates for [Coder](https://coder.com) at `coder.moveyourdigital.dev`.
+Templates for [Coder](https://coder.com).
 Workspaces run on `x1-hel1` (Docker Swarm worker) with the
 [Sysbox](https://github.com/nestybox/sysbox) runtime: each workspace has its
 own Docker daemon, with no access to the host Docker socket.
@@ -58,6 +58,10 @@ Prerequisites: an `ops` workspace (or any machine) with `git`, `just`,
 5. Update the workspaces (Coder dashboard → Update, or `coder update <ws>`).
 
 Other commands: `just --list`.
+
+Template variable `extra_git_hosts` (optional): extra Git hosts for
+`known_hosts`, space-separated. Set it on a push, for example
+`coder templates push <t> -d <t> --variable extra_git_hosts="<git-host>"`.
 
 ## Images
 

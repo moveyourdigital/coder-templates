@@ -87,9 +87,9 @@ Use `--context swarm` per command, or `docker context use swarm` with care.
 ### 4. Hetzner, Cloudflare, Coder
 
 ```bash
-hcloud context create moveyourdigital      # paste a project token
+hcloud context create <project>            # paste a project token
 wrangler login                             # or CLOUDFLARE_API_TOKEN in a local .env
-coder login https://coder.moveyourdigital.dev
+coder login https://<coder-url>
 ```
 
 Use tokens with the minimum scope for the task.
