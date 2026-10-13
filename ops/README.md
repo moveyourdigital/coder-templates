@@ -134,8 +134,8 @@ changes infrastructure.
 ## For template owners
 
 - Runtime `sysbox-runc` on `x1-hel1`. No host Docker socket.
-- Image `coder-workspace-ops:<tag>`, built on x1 from `build/`:
-  `docker build -t coder-workspace-ops:<tag> build/`
+- Image `ghcr.io/moveyourdigital/coder-workspace-ops:<tag>`, built from
+  `build/` by GitHub Actions (`.github/workflows/images.yml`).
 - `tailscaled` runs as the `coder` user in userspace mode (no TUN device),
   with a SOCKS5 proxy on `localhost:1055`.
 - To change a pinned tool version: edit `local.ops_tools` and publish a patch
