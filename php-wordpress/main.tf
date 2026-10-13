@@ -22,6 +22,11 @@ variable "extra_git_hosts" {
   description = "Space-separated extra Git hosts to add to known_hosts (e.g. a private Git server)."
   type        = string
   default     = ""
+
+  validation {
+    condition     = can(regex("^[A-Za-z0-9. :-]*$", var.extra_git_hosts))
+    error_message = "Use only host names or IP addresses, separated by spaces."
+  }
 }
 
 locals {
