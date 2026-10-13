@@ -62,6 +62,19 @@
         "terraform"
       ],
       "groupName": "terraform providers"
+    },
+    {
+      "description": "kreuzwerker/docker v4 builds with buildx over the local socket and ignores \"host\" (see main.tf). Stay on v3.",
+      "matchManagers": [
+        "terraform"
+      ],
+      "matchPackageNames": [
+        "kreuzwerker/docker"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "enabled": false
     }
   ]
 }
