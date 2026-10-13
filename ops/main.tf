@@ -18,6 +18,17 @@ provider "docker" {
   host = "tcp://docker-x1:2375"
 }
 
+variable "extra_git_hosts" {
+  description = "Space-separated extra Git hosts to add to known_hosts (e.g. a private Git server)."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = can(regex("^[A-Za-z0-9. :-]*$", var.extra_git_hosts))
+    error_message = "Use only host names or IP addresses, separated by spaces."
+  }
+}
+
 locals {
   template_slug = "ops"
 
@@ -121,7 +132,7 @@ resource "coder_agent" "main" {
 
     mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh"
     touch "$HOME/.ssh/known_hosts"
-    ssh-keyscan -t ed25519,rsa git.moveyourdigital.dev github.com gitlab.com \
+    ssh-keyscan -t ed25519,rsa ${var.extra_git_hosts} github.com gitlab.com \
       >> "$HOME/.ssh/known_hosts" 2>/dev/null || true
     sort -u -o "$HOME/.ssh/known_hosts" "$HOME/.ssh/known_hosts"
     chmod 600 "$HOME/.ssh/known_hosts"
