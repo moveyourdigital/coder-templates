@@ -56,6 +56,19 @@ RUN curl -fsSL "https://github.com/coder/code-server/releases/download/v${CODE_S
   && rm -rf /var/lib/apt/lists/* \
   && ln -sf /usr/bin/code-server /usr/local/bin/code-server
 
+# code-server bundles shell-quote 1.10.0 (CVE-2026-102422, CRITICAL).
+# Replace it with the fixed version. Remove this step when code-server ships it.
+ARG SHELL_QUOTE_VERSION=1.11.0
+ARG SHELL_QUOTE_SHA512=25dc433c3d03053caed3ca6ad243c2d3148d7adfeab14d3ba93e88b17d404bca0ed8808d458e2574d6bc38023a3eec001fcb46de5c4485baa6ca9e03c38d37ea
+RUN d=/usr/lib/code-server/lib/vscode/node_modules/shell-quote \
+  && test -d "$d" \
+  && curl -fsSL "https://registry.npmjs.org/shell-quote/-/shell-quote-${SHELL_QUOTE_VERSION}.tgz" \
+       -o /tmp/shell-quote.tgz \
+  && echo "${SHELL_QUOTE_SHA512}  /tmp/shell-quote.tgz" | sha512sum -c - \
+  && rm -rf "$d" && mkdir "$d" \
+  && tar -xzf /tmp/shell-quote.tgz -C "$d" --strip-components=1 --no-same-owner \
+  && rm -f /tmp/shell-quote.tgz
+
 # --- Claude Code managed policy ---------------------------------------------
 COPY --chmod=0644 managed-settings.json /etc/claude-code/managed-settings.json
 
