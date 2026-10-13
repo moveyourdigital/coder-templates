@@ -1,0 +1,44 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "minimumReleaseAge": "14 days",
+  "labels": ["dependencies"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "code-server version in the Dockerfiles",
+      "managerFilePatterns": ["/(^|/)build/Dockerfile$/"],
+      "matchStrings": ["ARG CODE_SERVER_VERSION=(?<currentValue>\\S+)"],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "coder/code-server",
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "trivy image in the workflows",
+      "managerFilePatterns": ["/^\\.github/workflows/.+\\.yml$/"],
+      "matchStrings": ["(?<depName>aquasec/trivy):(?<currentValue>[0-9][^\\s\"]*)"],
+      "datasourceTemplate": "docker"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "One PR for all templates. A change under build/ needs a new image tag in main.tf (check-tags fails until then).",
+      "matchFileNames": ["*/build/**"],
+      "groupName": "workspace images",
+      "prBodyNotes": ["Bump the image tag in each changed `<template>/main.tf` before merging."]
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "github actions"
+    },
+    {
+      "matchManagers": ["mise"],
+      "groupName": "dev tools"
+    },
+    {
+      "matchManagers": ["terraform"],
+      "groupName": "terraform providers"
+    }
+  ]
+}
