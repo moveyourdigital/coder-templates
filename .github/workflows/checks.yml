@@ -3,29 +3,19 @@
 #   checks     just lint + just validate (tools from .mise.toml)
 #   image-tag  a change under build/ needs a new tag that is not in GHCR
 #   images     build and trivy-scan images with a new tag (no push)
-#
-# scan.yml starts it with workflow_dispatch on its security PR branch: a PR
-# opened with GITHUB_TOKEN starts no workflows, but a dispatch does. The job
-# names are the same, so the results count as the PR's required checks.
 
 name: checks
 
 on:
   pull_request:
     branches: [main]
-  workflow_dispatch:
-    inputs:
-      base:
-        description: Base commit (SHA) to compare with, for check-tags
-        required: true
-        type: string
 
 permissions:
   contents: read
   packages: read
 
 concurrency:
-  group: checks-${{ github.event.pull_request.number || github.ref }}
+  group: checks-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
@@ -54,16 +44,9 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: just check-tags
+      - run: just check-tags "$BASE_SHA"
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || inputs.base }}
-        run: |
-          [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::base must be a commit SHA"; exit 1; }
-          # A dispatched base must be a commit on main (not the branch itself),
-          # or check-tags would compare the branch with itself.
-          git merge-base --is-ancestor "$BASE_SHA" origin/main \
-            || { echo "::error::base $BASE_SHA is not a commit on main"; exit 1; }
-          just check-tags "$BASE_SHA"
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
 
   images:
     uses: ./.github/workflows/build-images.yml
