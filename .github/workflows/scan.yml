@@ -180,8 +180,11 @@ jobs:
         env:
           OLD: ${{ steps.ref.outputs.image }}
           NEW: ${{ steps.next.outputs.image }}
+          FORCE: ${{ inputs.rebuild == matrix.template }}
         run: |
           tag="${NEW##*:}"
+          kind="security rebuild"
+          if [ ! -s cves.md ] && [ "$FORCE" = true ]; then kind="rebuild"; fi
           branch="auto/rebuild-$TEMPLATE-$tag"
           file="$TEMPLATE/main.tf"
           repo="repos/$GITHUB_REPOSITORY"
@@ -196,7 +199,7 @@ jobs:
           gh api "$repo/git/refs" -f ref="refs/heads/$branch" -f sha="$GITHUB_SHA" >/dev/null
           blob="$(gh api "$repo/contents/$file?ref=$branch" --jq .sha)"
           gh api -X PUT "$repo/contents/$file" \
-            -f message="$TEMPLATE: rebuild image as $tag (security)" \
+            -f message="$TEMPLATE: $kind $tag" \
             -f content="$(base64 -w0 main.tf.new)" -f sha="$blob" -f branch="$branch" >/dev/null
 
           {
@@ -219,7 +222,7 @@ jobs:
             echo "\`just release $TEMPLATE <version> \"Security rebuild\"\`"
           } > body.md
           url="$(gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$branch" \
-            --title "$TEMPLATE: security rebuild $tag" --body-file body.md)"
+            --title "$TEMPLATE: $kind $tag" --body-file body.md)"
           echo "PR: $url" | tee -a "$GITHUB_STEP_SUMMARY"
 
           gh pr merge --repo "$GITHUB_REPOSITORY" --auto --merge "$url"
