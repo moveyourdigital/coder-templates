@@ -37,6 +37,19 @@
     },
     {
       "customType": "regex",
+      "description": "tod (OneDev CLI) tag and commit in the Dockerfiles",
+      "managerFilePatterns": [
+        "/(^|/)build/Dockerfile$/"
+      ],
+      "matchStrings": [
+        "ARG TOD_VERSION=(?<currentValue>v\\S+)\\nARG TOD_COMMIT=(?<currentDigest>[a-f0-9]{40})"
+      ],
+      "datasourceTemplate": "git-tags",
+      "depNameTemplate": "onedev/tod",
+      "packageNameTemplate": "https://code.onedev.io/onedev/tod.git"
+    },
+    {
+      "customType": "regex",
       "description": "trivy image (tag and digest) in scripts/trivy-scan.sh",
       "managerFilePatterns": [
         "/^scripts/trivy-scan\\.sh$/"
@@ -88,6 +101,13 @@
         "major"
       ],
       "enabled": false
+    },
+    {
+      "description": "OneDev server is 16.4.1; tod 4.3.3+ needs 16.5.11. Remove this rule after the server upgrade.",
+      "matchDepNames": [
+        "onedev/tod"
+      ],
+      "allowedVersions": "<4.3.3"
     }
   ]
 }

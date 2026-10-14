@@ -20,6 +20,12 @@ common='
   docker compose version; docker buildx version
   # Claude Code managed policy must be readable by coder (COPY --chmod=0644)
   jq -e . /etc/claude-code/managed-settings.json >/dev/null
+  # OneDev CLI and its managed skills (readable by coder)
+  tod version
+  n=0
+  for f in /etc/claude-code/.claude/skills/*/SKILL.md; do test -r "$f" && n=$((n + 1)); done
+  test "$n" -ge 8 || { echo "tod skills: $n readable, want 8+" >&2; exit 1; }
+  echo "tod skills: $n"
   code-server --version | sed -n 1p
   code-server --auth none --bind-addr 127.0.0.1:13337 >/tmp/cs.log 2>&1 &
   for _ in $(seq 1 30); do

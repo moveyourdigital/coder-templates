@@ -29,6 +29,17 @@ variable "extra_git_hosts" {
   }
 }
 
+variable "onedev_url" {
+  description = "OneDev server URL for the tod CLI (e.g. https://onedev.example.com). Empty: each user sets it with tod config set."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.onedev_url == "" || can(regex("^https://[A-Za-z0-9.-]+(:[0-9]+)?/?$", var.onedev_url))
+    error_message = "Use an https:// URL without a path, or leave it empty."
+  }
+}
+
 locals {
   template_slug = "php-wordpress"
   preview_port  = 8080
@@ -99,11 +110,12 @@ resource "coder_agent" "main" {
   arch = "amd64"
   os   = "linux"
 
-  env = {
+  # ONEDEV_SERVER_URL only when set: tod treats an empty value as an override.
+  env = merge({
     REPO_URL   = data.coder_parameter.repo_url.value
     GIT_REF    = data.coder_parameter.git_ref.value
     MISE_TOOLS = "${data.coder_parameter.node_version.value} ${data.coder_parameter.extra_mise_tools.value}"
-  }
+  }, var.onedev_url == "" ? {} : { ONEDEV_SERVER_URL = var.onedev_url })
 
   # Git over SSH uses `coder gitssh` (GIT_SSH_COMMAND is set by the agent).
   # Add the Coder public key (`coder publickey`) once to GitHub and OneDev.
@@ -316,7 +328,7 @@ resource "docker_image" "workspace" {
   # Built from build/ by GitHub Actions (.github/workflows/images.yml) and
   # pushed to GHCR. Not built on x1-hel1. Tags are immutable: a change under
   # build/ needs a new tag here.
-  name         = "ghcr.io/moveyourdigital/coder-workspace-php-wordpress:v0.6.0"
+  name         = "ghcr.io/moveyourdigital/coder-workspace-php-wordpress:v0.7.0"
   keep_locally = true
 }
 

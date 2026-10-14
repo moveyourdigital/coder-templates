@@ -15,7 +15,8 @@ repos:
         files: Dockerfile$
       - id: json-valid
         name: JSON syntax
-        entry: python3 -m json.tool
+        # json.tool takes [infile] [outfile]: never pass it several files.
+        entry: python3 -c 'import json, sys; [json.load(open(f)) for f in sys.argv[1:]]'
         language: system
         files: \.json$
       - id: gitleaks
