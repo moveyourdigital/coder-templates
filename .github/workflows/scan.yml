@@ -92,14 +92,17 @@ jobs:
           if [ "$count" != 0 ] || [ "$FORCE" = true ]; then rebuild=true; fi
           echo "rebuild=$rebuild" >> "$GITHUB_OUTPUT"
 
-      - name: Skip if a rebuild PR is already open
+      - name: Skip if an open PR changes this template
         id: open
         if: steps.scan.outputs.rebuild == 'true'
         run: |
-          pr="$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --json number,headRefName \
-            --jq ".[] | select(.headRefName | startswith(\"auto/rebuild-$TEMPLATE-\")) | .number" | sed -n 1p)"
+          # Covers an open rebuild PR, and a normal PR that may already use the
+          # next patch tag (not in GHCR yet): never push a tag it will use.
+          pr="$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --limit 100 --json number,files \
+            --jq ".[] | select(any(.files[]; .path == \"$TEMPLATE/main.tf\" or (.path | startswith(\"$TEMPLATE/build/\")))) | .number" \
+            | sed -n 1p)"
           if [ -n "$pr" ]; then
-            echo "::notice::Rebuild PR #$pr is already open for $TEMPLATE"
+            echo "::warning::$TEMPLATE needs a rebuild, but open PR #$pr changes it. Retrying after it is merged or closed."
             echo "go=false" >> "$GITHUB_OUTPUT"
           else
             echo "go=true" >> "$GITHUB_OUTPUT"
