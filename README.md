@@ -72,8 +72,7 @@ resets the variable to its default.
 Create it once on each machine you release from (see `vars.example.yaml`):
 
 ```yaml
-extra_git_hosts: <git-host>         # space-separated, added to known_hosts
-onedev_url: https://<onedev-host>   # tod server URL (ONEDEV_SERVER_URL)
+extra_git_hosts: <git-host>   # space-separated, added to known_hosts
 ```
 
 Every template must declare each variable in the file.
@@ -88,10 +87,14 @@ can work with OneDev issues, pull requests and builds.
   latest binary without verification, so it is not used.
 - The skills are installed in `/etc/claude-code/.claude/skills/`: managed,
   loaded for every user, always the same version as the binary.
-- Server URL: template variable `onedev_url` (`vars.yaml`), exported as
-  `ONEDEV_SERVER_URL` only when set. Access token: each user's own, set with
-  `tod config set access-token` (stored in `~/.config/tod/config`, home volume).
-  No token in the templates or images.
+- Server URL and token come from each user's Coder user secrets
+  `ONEDEV_SERVER_URL` and `ONEDEV_TOKEN`. tod reads `ONEDEV_ACCESS_TOKEN`, so
+  `/usr/local/bin/tod` is a wrapper (`build/tod-env.sh`) that uses
+  `ONEDEV_TOKEN` when `ONEDEV_ACCESS_TOKEN` is not set, then starts the real
+  binary (`/usr/local/lib/tod/tod`). Without secrets: `tod config set`
+  (stored in `~/.config/tod/config`). No token in the templates or images.
+- The token is an environment variable, so any process in the workspace
+  (Claude Code included) can read it. Use a token with the minimum scope.
 - Claude Code policy: read commands are allowed; commands that change OneDev
   ask first; `tod config set` and reading the tod config are denied.
 - Version hold: OneDev here is 16.4.1, and tod 4.3.3+ needs 16.5.11. Renovate

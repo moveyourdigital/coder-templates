@@ -90,8 +90,10 @@ Use `--context swarm` per command, or `docker context use swarm` with care.
 hcloud context create <project>            # paste a project token
 wrangler login                             # or CLOUDFLARE_API_TOKEN in a local .env
 coder login https://<coder-url>
-tod config set access-token <token>        # OneDev: avatar → Access Tokens
 ```
+
+OneDev (`tod`): add the Coder user secrets `ONEDEV_SERVER_URL` and
+`ONEDEV_TOKEN` (OneDev: avatar → Access Tokens), or run `tod config set`.
 
 Use tokens with the minimum scope for the task.
 
@@ -104,7 +106,7 @@ Use tokens with the minimum scope for the task.
 | Tailscale node | `~/.local/share/tailscale/` |
 | SSH key to nodes | `~/.ssh/ops_ed25519` |
 | Coder session | `~/.config/coderv2/` |
-| OneDev token (`tod`) | `~/.config/tod/config` |
+| OneDev token (`tod`) | Coder user secret `ONEDEV_TOKEN`, or `~/.config/tod/config` |
 
 Do **not** store these as Coder user secrets: user secrets go to every
 workspace you own, including the coding workspaces.
