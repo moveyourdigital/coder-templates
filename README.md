@@ -112,6 +112,10 @@ Make these checks required in the branch protection of `main`.
   code-server bundles), the job fails and a person must fix `build/`.
   Releasing the new version in Coder stays manual: `just release`.
   To test the flow: Actions → scan → Run workflow → `rebuild: <template>`.
+- The daily scan also uploads fixable HIGH and CRITICAL findings of each
+  published image to the Security tab (Security → Code scanning, category
+  `trivy-<template>`). Alerts close by themselves when a new image no
+  longer has them. HIGH is for visibility only: it does not start a rebuild.
 - Repository settings for the rebuild: "Allow auto-merge" (Settings →
   General) and "Allow GitHub Actions to create and approve pull requests"
   (Settings → Actions → General).

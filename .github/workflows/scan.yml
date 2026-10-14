@@ -1,5 +1,6 @@
-# Daily trivy scan of the published images (the tags in main.tf), and an
-# automatic security rebuild when a fixable CRITICAL vulnerability is found:
+# Daily trivy scan of the published images (the tags in main.tf). Fixable
+# HIGH and CRITICAL findings go to the Security tab (code scanning, SARIF).
+# A fixable CRITICAL vulnerability starts an automatic security rebuild:
 #
 #   1. rebuild <template>/build from main (no cache, fresh base image)
 #   2. trivy must be clean, smoke test must pass
@@ -44,6 +45,7 @@ jobs:
     permissions:
       contents: write        # branch + commit for the tag bump (API)
       pull-requests: write   # open the PR, enable auto-merge
+      security-events: write # upload trivy results to the Security tab
       packages: write        # push the rebuilt image
     strategy:
       fail-fast: false
@@ -90,6 +92,21 @@ jobs:
           rebuild=false
           if [ "$count" != 0 ] || [ "$FORCE" = true ]; then rebuild=true; fi
           echo "rebuild=$rebuild" >> "$GITHUB_OUTPUT"
+
+      # Visibility only: an error here must not block a security rebuild.
+      - name: Scan for the Security tab (HIGH + CRITICAL, SARIF)
+        continue-on-error: true
+        env:
+          IMAGE: ${{ steps.ref.outputs.image }}
+        run: scripts/trivy-scan.sh "$IMAGE" --sarif > trivy.sarif
+
+      # One category per template: each upload replaces that template's
+      # previous results, so fixed findings close by themselves.
+      - uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        continue-on-error: true
+        with:
+          sarif_file: trivy.sarif
+          category: trivy-${{ matrix.template }}
 
       - name: Skip if an open PR changes this template
         id: open
