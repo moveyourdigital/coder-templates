@@ -9,6 +9,16 @@ jobs:
       type: DefaultCredential
     withLfs: false
     withSubmodules: false
+    checkoutPath: src
+    condition: SUCCESSFUL
+    optional: false
+  - type: SetupCacheStep
+    name: mise tools cache
+    key: mise-tools
+    checksumFiles: src/.mise.toml
+    entries:
+    - path: mise
+    uploadStrategy: UPLOAD_IF_NOT_EXACT_MATCH
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
@@ -22,6 +32,10 @@ jobs:
         set -eu
         apk add --no-cache -q bash git jq python3 curl mise
         git config --global --add safe.directory '*'
+        # Tools in ./mise (cached by the step above, keyed on .mise.toml):
+        # downloads only when a version changes (GitHub API rate limit).
+        export MISE_DATA_DIR="$PWD/mise"
+        cd src
         mise trust -q .mise.toml
         mise install -q
         mise exec -- just lint
