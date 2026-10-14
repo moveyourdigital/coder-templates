@@ -105,6 +105,22 @@ can work with OneDev issues, pull requests and builds.
   keeps tod below 4.3.3 (`renovate.json`). Remove that rule after the server
   upgrade.
 
+## OneDev CI (migration in progress)
+
+The repository is moving to OneDev (`moveyourdigital/devops/coder-templates`).
+Until the switch, GitHub stays the source of truth and `main` is pushed to
+OneDev after each merge. `.onedev-buildspec.yml` (validate with
+`tod build check-spec`), executor `remote`:
+
+- `checks`: `just lint` + `just validate` (Alpine `docker:29.8.2-cli`, tools
+  from `.mise.toml`). `just lint-gh` (actionlint, zizmor) is GitHub only.
+- `images`: on a pull request `scripts/check-tags.sh <target branch>`, then
+  `scripts/ci-images.sh`: build, trivy scan and smoke test of every image
+  with a new tag. **No push yet**: `main.tf` still points to GHCR.
+
+Still to do: push to the OneDev registry, daily scan + rebuild PRs, Renovate
+(built-in step), required builds, image pulls on x1, then archive GitHub.
+
 ## Pull request checks
 
 `.github/workflows/checks.yml` runs on each pull request to `main`
