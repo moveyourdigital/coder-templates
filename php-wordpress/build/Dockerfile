@@ -2,6 +2,21 @@
 # PHP from apt. Node (theme builds) is installed by mise at start.
 # Run WordPress + MariaDB locally with docker compose inside the workspace.
 
+# --- OneDev CLI (tod), built from a pinned tag ------------------------------
+# The official installer always downloads the latest binary, unverified.
+# Here: clone the tag, check its commit, build. Only the binary and the agent
+# skills go into the final image.
+FROM golang:1.27.0-bookworm AS tod
+ARG TOD_VERSION=v4.3.2
+ARG TOD_COMMIT=9e280c96bf0f3e541706580c0830e5753dc5d28d
+WORKDIR /src
+RUN git clone --depth 1 --branch "${TOD_VERSION}" https://code.onedev.io/onedev/tod.git . \
+  && test "$(git rev-parse HEAD)" = "${TOD_COMMIT}" \
+  && CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o /out/tod . \
+  && mkdir -p /out/skills \
+  && for d in skills/*/; do cp -r "$d" /out/skills/; done \
+  && chmod -R u=rwX,go=rX /out
+
 FROM ubuntu:24.04
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -94,6 +109,11 @@ RUN d=/usr/lib/code-server/lib/vscode/node_modules/shell-quote \
 # it creates (0644 without x), and then coder cannot read the file.
 RUN install -d -m 0755 /etc/claude-code
 COPY --chmod=0644 managed-settings.json /etc/claude-code/managed-settings.json
+
+# --- OneDev CLI (tod) and its Claude Code skills ----------------------------
+# Skills in /etc/claude-code/.claude/skills load for every user (managed).
+COPY --from=tod /out/tod /usr/local/bin/tod
+COPY --from=tod /out/skills /etc/claude-code/.claude/skills
 
 # --- coder user -------------------------------------------
 # UID 1000 must stay: existing home volumes are owned by 1000.

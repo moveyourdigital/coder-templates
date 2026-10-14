@@ -21,8 +21,8 @@ Docker daemon, so you can run WordPress, MariaDB and other services with
 | Node.js | Node LTS through [mise](https://mise.jdx.dev), for theme and asset builds |
 | Docker | Docker Engine, Compose and Buildx **inside** the workspace |
 | Editor | VS Code (web) with the Claude Code extension |
-| AI | Claude Code CLI (`claude`) |
-| Git | `git`, GitHub CLI (`gh`), SSH through Coder |
+| AI | Claude Code CLI (`claude`), with skills for OneDev |
+| Git | `git`, GitHub CLI (`gh`), OneDev CLI (`tod`), SSH through Coder |
 | Other | `build-essential`, `ripgrep`, `fd`, `jq`, `tmux`, `htop` |
 
 ## Parameters
@@ -44,7 +44,12 @@ On each start, the workspace runs `mise install`, `npm`/`pnpm`/`yarn`/`bun insta
    copy private keys into the workspace.
 2. **Log in to Claude Code once.** Open a terminal and run `claude`. The login
    is kept in `~/.claude`. The VS Code extension uses the same login.
-3. **Start WordPress locally.** Use a `compose.yaml` in your project, then
+3. **Connect `tod` to OneDev (optional).** In OneDev, create an access token
+   (your avatar → **Access Tokens**), then run
+   `tod config set access-token <token>`. The server URL is already set. Test
+   it with `tod project list`. Claude Code can then work with OneDev issues,
+   pull requests and builds through its `tod` skills. It asks before any change.
+4. **Start WordPress locally.** Use a `compose.yaml` in your project, then
    open the **Preview :8080** app in the Coder dashboard.
 
 Example `compose.yaml`:

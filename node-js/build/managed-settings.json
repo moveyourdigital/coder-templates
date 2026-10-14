@@ -1,9 +1,49 @@
 {
   "permissions": {
     "disableBypassPermissionsMode": "disable",
+    "allow": [
+      "Bash(tod version)",
+      "Bash(tod config get:*)",
+      "Bash(tod config path)",
+      "Bash(tod remote)",
+      "Bash(tod get-login-name:*)",
+      "Bash(tod get-valid-labels)",
+      "Bash(tod get-commit-message-requirement:*)",
+      "Bash(tod project:*)",
+      "Bash(tod issue list:*)",
+      "Bash(tod issue get:*)",
+      "Bash(tod issue current-reference)",
+      "Bash(tod pr list:*)",
+      "Bash(tod pr get:*)",
+      "Bash(tod pr current-reference)",
+      "Bash(tod build list:*)",
+      "Bash(tod build get:*)",
+      "Bash(tod build check-spec)"
+    ],
+    "ask": [
+      "Bash(tod issue create:*)",
+      "Bash(tod issue edit:*)",
+      "Bash(tod issue change-state:*)",
+      "Bash(tod issue link:*)",
+      "Bash(tod issue add-comment:*)",
+      "Bash(tod issue log-work:*)",
+      "Bash(tod issue create-branch:*)",
+      "Bash(tod pr create:*)",
+      "Bash(tod pr edit:*)",
+      "Bash(tod pr approve:*)",
+      "Bash(tod pr request-changes:*)",
+      "Bash(tod pr merge:*)",
+      "Bash(tod pr discard:*)",
+      "Bash(tod pr add-comment:*)",
+      "Bash(tod pr add-code-comment:*)",
+      "Bash(tod code-comment:*)",
+      "Bash(tod build run:*)"
+    ],
     "deny": [
       "Bash(sudo:*)",
-      "Read(/etc/claude-code/**)"
+      "Read(/etc/claude-code/*.json)",
+      "Bash(tod config set:*)",
+      "Read(~/.config/tod/**)"
     ]
   }
 }

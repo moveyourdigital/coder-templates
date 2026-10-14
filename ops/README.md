@@ -31,7 +31,7 @@ their own workspace. Credentials stay in that workspace's home volume.
 | Network | Tailscale client, `mtr`, `tcpdump`, `nmap`, `iperf3`, `socat`, `whois`, `openssl` | apt |
 | Data | `borgbackup`, `postgresql-client`, `redis-tools` | apt |
 | Runbooks | `just` | mise |
-| Base | Node LTS, `gh`, Claude Code, code-server | mise / apt |
+| Base | Node LTS, `gh`, OneDev CLI (`tod`), Claude Code, code-server | mise / apt / image |
 
 mise tool versions are pinned in `main.tf` (`local.ops_tools`).
 
@@ -84,12 +84,13 @@ docker --context swarm service ls
 
 Use `--context swarm` per command, or `docker context use swarm` with care.
 
-### 4. Hetzner, Cloudflare, Coder
+### 4. Hetzner, Cloudflare, Coder, OneDev
 
 ```bash
 hcloud context create <project>            # paste a project token
 wrangler login                             # or CLOUDFLARE_API_TOKEN in a local .env
 coder login https://<coder-url>
+tod config set access-token <token>        # OneDev: avatar → Access Tokens
 ```
 
 Use tokens with the minimum scope for the task.
@@ -103,6 +104,7 @@ Use tokens with the minimum scope for the task.
 | Tailscale node | `~/.local/share/tailscale/` |
 | SSH key to nodes | `~/.ssh/ops_ed25519` |
 | Coder session | `~/.config/coderv2/` |
+| OneDev token (`tod`) | `~/.config/tod/config` |
 
 Do **not** store these as Coder user secrets: user secrets go to every
 workspace you own, including the coding workspaces.
@@ -118,7 +120,8 @@ This template has a stricter managed policy than the coding templates:
 - **Asks first:** `terraform apply`, all `hcloud` commands, `docker stack deploy`,
   `docker service update/scale`, `docker node update`, `docker context use`,
   `ansible-playbook`, `wrangler deploy/secret`, `coder templates push`,
-  `ssh`, `scp`, `rsync`.
+  `ssh`, `scp`, `rsync`, and every `tod` command that changes OneDev
+  (same rules as the coding templates).
 
 The policy is a safety net, not a security boundary. Review every action that
 changes infrastructure.

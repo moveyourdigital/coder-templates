@@ -72,10 +72,31 @@ resets the variable to its default.
 Create it once on each machine you release from (see `vars.example.yaml`):
 
 ```yaml
-extra_git_hosts: <git-host>   # space-separated, added to known_hosts
+extra_git_hosts: <git-host>         # space-separated, added to known_hosts
+onedev_url: https://<onedev-host>   # tod server URL (ONEDEV_SERVER_URL)
 ```
 
 Every template must declare each variable in the file.
+
+## OneDev CLI (tod) and Claude Code skills
+
+Every image has the OneDev CLI `tod` and its 8 agent skills, so Claude Code
+can work with OneDev issues, pull requests and builds.
+
+- `tod` is built from a pinned tag (`ARG TOD_VERSION` / `TOD_COMMIT` in each
+  Dockerfile; the commit is checked). The official installer downloads the
+  latest binary without verification, so it is not used.
+- The skills are installed in `/etc/claude-code/.claude/skills/`: managed,
+  loaded for every user, always the same version as the binary.
+- Server URL: template variable `onedev_url` (`vars.yaml`), exported as
+  `ONEDEV_SERVER_URL` only when set. Access token: each user's own, set with
+  `tod config set access-token` (stored in `~/.config/tod/config`, home volume).
+  No token in the templates or images.
+- Claude Code policy: read commands are allowed; commands that change OneDev
+  ask first; `tod config set` and reading the tod config are denied.
+- Version hold: OneDev here is 16.4.1, and tod 4.3.3+ needs 16.5.11. Renovate
+  keeps tod below 4.3.3 (`renovate.json`). Remove that rule after the server
+  upgrade.
 
 ## Pull request checks
 

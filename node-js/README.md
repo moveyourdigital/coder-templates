@@ -19,8 +19,8 @@ Docker daemon, so you can run Postgres, Redis and other services with
 | Node.js | Node LTS and pnpm through [mise](https://mise.jdx.dev) |
 | Docker | Docker Engine, Compose and Buildx **inside** the workspace |
 | Editor | VS Code (web) with the Claude Code extension |
-| AI | Claude Code CLI (`claude`) |
-| Git | `git`, GitHub CLI (`gh`), SSH through Coder |
+| AI | Claude Code CLI (`claude`), with skills for OneDev |
+| Git | `git`, GitHub CLI (`gh`), OneDev CLI (`tod`), SSH through Coder |
 | Other | `build-essential`, `python3` (node-gyp), `ripgrep`, `fd`, `jq`, `tmux`, `htop` |
 
 `NEXT_TELEMETRY_DISABLED=1` is set in the image.
@@ -45,7 +45,12 @@ in the repo wins over the parameter.
    copy private keys into the workspace.
 2. **Log in to Claude Code once.** Open a terminal and run `claude`. The login
    is kept in `~/.claude`. The VS Code extension uses the same login.
-3. **Run the app.** Start the dev server on port 3000 (`pnpm dev`), then open
+3. **Connect `tod` to OneDev (optional).** In OneDev, create an access token
+   (your avatar → **Access Tokens**), then run
+   `tod config set access-token <token>`. The server URL is already set. Test
+   it with `tod project list`. Claude Code can then work with OneDev issues,
+   pull requests and builds through its `tod` skills. It asks before any change.
+4. **Run the app.** Start the dev server on port 3000 (`pnpm dev`), then open
    the **Preview :3000** app in the Coder dashboard.
 
 ## What persists
