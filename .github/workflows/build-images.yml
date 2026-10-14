@@ -25,6 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0   # for the revision check of existing tags
           persist-credentials: false
 
       - name: Read image reference from main.tf
@@ -45,11 +46,20 @@ jobs:
       - name: Skip if the tag already exists
         id: exists
         env:
+          TEMPLATE: ${{ matrix.template }}
           IMAGE: ${{ steps.ref.outputs.image }}
         run: |
           # Fails (exit 2) on registry errors: never build/push on a guess.
           state="$(scripts/image-state.sh "$IMAGE")"
           if [ "$state" = present ]; then
+            # The existing image must come from the same build/, or main.tf
+            # points to the wrong image (e.g. the tag was taken by another
+            # build). Fail loudly instead of skipping.
+            rev="$(scripts/image-revision.sh "$IMAGE")"
+            if ! git cat-file -e "$rev^{commit}" 2>/dev/null || ! git diff --quiet "$rev" HEAD -- "$TEMPLATE/build"; then
+              echo "::error::$IMAGE exists but was built from a different $TEMPLATE/build/ (${rev:0:7}). Use a new tag."
+              exit 1
+            fi
             echo "exists=true" >> "$GITHUB_OUTPUT"
             echo "Tag exists, nothing to build."
           else
@@ -79,12 +89,7 @@ jobs:
         if: steps.exists.outputs.exists == 'false'
         env:
           IMAGE: ${{ steps.ref.outputs.image }}
-        run: |
-          docker run --rm \
-            -v /var/run/docker.sock:/var/run/docker.sock \
-            aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa image \
-            --scanners vuln --severity CRITICAL --ignore-unfixed --exit-code 1 \
-            --no-progress "$IMAGE"
+        run: scripts/trivy-scan.sh "$IMAGE"
 
       - name: Smoke test (tools, policy, code-server)
         if: steps.exists.outputs.exists == 'false'
