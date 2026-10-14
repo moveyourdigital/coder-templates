@@ -1,0 +1,87 @@
+version: 52
+jobs:
+- name: checks
+  jobExecutor: remote
+  steps:
+  - type: CheckoutStep
+    name: checkout
+    cloneCredential:
+      type: DefaultCredential
+    withLfs: false
+    withSubmodules: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: lint and validate
+    runInContainer: true
+    image: docker:29.8.2-cli
+    interpreter:
+      type: PosixInterpreter
+      shell: sh
+      commands: |
+        set -eu
+        apk add --no-cache -q bash git jq python3 curl mise
+        git config --global --add safe.directory '*'
+        mise trust -q .mise.toml
+        mise install -q
+        mise exec -- just lint
+        mise exec -- just validate
+    runAs: 0:0
+    useTTY: true
+    condition: SUCCESSFUL
+    optional: false
+  triggers:
+  - type: PullRequestUpdateTrigger
+    branches: main
+  - type: BranchUpdateTrigger
+    branches: main
+    userMatch: anyone
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  timeout: 3600
+- name: images
+  jobExecutor: remote
+  steps:
+  - type: CheckoutStep
+    name: checkout
+    cloneCredential:
+      type: DefaultCredential
+    withLfs: false
+    withSubmodules: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: check tags, build, scan, smoke test
+    runInContainer: true
+    image: docker:29.8.2-cli
+    interpreter:
+      type: PosixInterpreter
+      shell: sh
+      commands: |
+        set -eu
+        apk add --no-cache -q bash git jq python3 curl
+        git config --global --add safe.directory '*'
+        # On a pull request the build runs on a merge commit: its first
+        # parent is the target branch, which check-tags compares against.
+        if [ "$(git rev-list --parents -n 1 HEAD | wc -w)" -gt 2 ]; then
+          bash scripts/check-tags.sh "$(git rev-parse HEAD^1)"
+        fi
+        bash scripts/ci-images.sh
+    runAs: 0:0
+    envVars:
+    - name: COMMIT
+      value: '@commit_hash@'
+    useTTY: true
+    condition: SUCCESSFUL
+    optional: false
+  triggers:
+  - type: PullRequestUpdateTrigger
+    branches: main
+  - type: BranchUpdateTrigger
+    branches: main
+    userMatch: anyone
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  timeout: 7200
