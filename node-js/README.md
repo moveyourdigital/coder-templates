@@ -46,12 +46,12 @@ in the repo wins over the parameter.
 2. **Log in to Claude Code once.** Open a terminal and run `claude`. The login
    is kept in `~/.claude`. The VS Code extension uses the same login.
 3. **Connect `tod` to OneDev (optional).** In OneDev, create an access token
-   (your avatar → **Access Tokens**). In Coder, add two user secrets (**Account →
-   Secrets**) as environment variables: `ONEDEV_SERVER_URL` (your OneDev URL)
-   and `ONEDEV_TOKEN` (the token). Restart the workspace, then test with
-   `tod project list`. Without secrets, use `tod config set` instead. Claude
-   Code can then work with OneDev issues, pull requests and builds through its
-   `tod` skills. It asks before any change.
+   (your avatar → **Access Tokens**). Store it as a Coder user secret with the
+   environment variable `ONEDEV_TOKEN`:
+   `printf %s "<token>" | coder secret create onedev-token --env ONEDEV_TOKEN`.
+   Restart the workspace, then test with `tod project list`. The OneDev URL is
+   preset by the template. Claude Code can then work with OneDev issues, pull
+   requests and builds through its `tod` skills. It asks before any change.
 4. **Run the app.** Start the dev server on port 3000 (`pnpm dev`), then open
    the **Preview :3000** app in the Coder dashboard.
 
