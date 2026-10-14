@@ -45,10 +45,12 @@ On each start, the workspace runs `mise install`, `npm`/`pnpm`/`yarn`/`bun insta
 2. **Log in to Claude Code once.** Open a terminal and run `claude`. The login
    is kept in `~/.claude`. The VS Code extension uses the same login.
 3. **Connect `tod` to OneDev (optional).** In OneDev, create an access token
-   (your avatar → **Access Tokens**), then run
-   `tod config set access-token <token>`. The server URL is already set. Test
-   it with `tod project list`. Claude Code can then work with OneDev issues,
-   pull requests and builds through its `tod` skills. It asks before any change.
+   (your avatar → **Access Tokens**). In Coder, add two user secrets (**Account →
+   Secrets**) as environment variables: `ONEDEV_SERVER_URL` (your OneDev URL)
+   and `ONEDEV_TOKEN` (the token). Restart the workspace, then test with
+   `tod project list`. Without secrets, use `tod config set` instead. Claude
+   Code can then work with OneDev issues, pull requests and builds through its
+   `tod` skills. It asks before any change.
 4. **Start WordPress locally.** Use a `compose.yaml` in your project, then
    open the **Preview :8080** app in the Coder dashboard.
 

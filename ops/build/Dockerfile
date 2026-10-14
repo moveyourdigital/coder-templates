@@ -108,7 +108,10 @@ COPY --chmod=0644 managed-settings.json /etc/claude-code/managed-settings.json
 
 # --- OneDev CLI (tod) and its Claude Code skills ----------------------------
 # Skills in /etc/claude-code/.claude/skills load for every user (managed).
-COPY --from=tod /out/tod /usr/local/bin/tod
+# /usr/local/bin/tod is a wrapper: it maps the Coder user secret ONEDEV_TOKEN
+# to ONEDEV_ACCESS_TOKEN (see tod-env.sh).
+COPY --from=tod /out/tod /usr/local/lib/tod/tod
+COPY --chmod=0755 tod-env.sh /usr/local/bin/tod
 COPY --from=tod /out/skills /etc/claude-code/.claude/skills
 
 # --- coder user -------------------------------------------
