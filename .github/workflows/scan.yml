@@ -1,25 +1,56 @@
-# Weekly trivy scan of the published images (the tags in main.tf).
-# New CVEs appear after an image is built. Tags are immutable, so a failure
-# here means: fix build/, bump the tag in main.tf, release.
+# Daily trivy scan of the published images (the tags in main.tf), and an
+# automatic security rebuild when a fixable CRITICAL vulnerability is found:
+#
+#   1. rebuild <template>/build from main (no cache, fresh base image)
+#   2. trivy must be clean, smoke test must pass
+#   3. push the next patch tag (v0.6.0 -> v0.6.1)
+#   4. open a PR that bumps the tag in main.tf, enable auto-merge
+#   5. start checks.yml on the PR branch (a PR opened with GITHUB_TOKEN
+#      starts no workflows; a workflow_dispatch does)
+#   6. the PR merges itself when the required checks pass
+#
+# If the rebuilt image is still vulnerable (e.g. a CVE in code bundled by
+# code-server), the job fails: a person must fix build/.
+# Releasing the new version in Coder stays manual (just release).
+#
+# Manual run: Actions -> scan -> Run workflow. "rebuild" forces a rebuild of
+# one template without a CVE (e.g. to test this flow).
 
 name: scan
 
 on:
   schedule:
-    - cron: "17 5 * * 1"   # Monday 05:17 UTC
+    - cron: "17 5 * * *"   # daily 05:17 UTC
   workflow_dispatch:
+    inputs:
+      rebuild:
+        description: Force a rebuild of this template
+        type: choice
+        default: none
+        options: [none, node-js, php-wordpress, ops]
 
 permissions:
   contents: read
-  packages: read
+
+concurrency:
+  group: scan
+  cancel-in-progress: false
 
 jobs:
   scan:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write        # branch + commit for the tag bump (API)
+      pull-requests: write   # open the PR, enable auto-merge
+      packages: write        # push the rebuilt image
+      actions: write         # start checks.yml on the PR branch
     strategy:
       fail-fast: false
       matrix:
         template: [node-js, php-wordpress, ops]
+    env:
+      TEMPLATE: ${{ matrix.template }}
+      GH_TOKEN: ${{ github.token }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -28,8 +59,6 @@ jobs:
 
       - name: Read image reference from main.tf
         id: ref
-        env:
-          TEMPLATE: ${{ matrix.template }}
         run: |
           image="$(scripts/image-ref.sh "$TEMPLATE/main.tf")"
           echo "image=$image" >> "$GITHUB_OUTPUT"
@@ -40,13 +69,135 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Scan with trivy (fail on fixable CRITICAL)
+      - name: Scan the published image
+        id: scan
+        env:
+          IMAGE: ${{ steps.ref.outputs.image }}
+          FORCE: ${{ inputs.rebuild == matrix.template }}
+        run: |
+          docker pull -q "$IMAGE"
+          scripts/trivy-scan.sh "$IMAGE" --json > trivy.json
+          count="$(jq '[.Results[]?.Vulnerabilities[]?] | length' trivy.json)"
+          jq -r '.Results[]?.Vulnerabilities[]? | "- \(.VulnerabilityID): \(.PkgName) \(.InstalledVersion) -> \(.FixedVersion)"' \
+            trivy.json | sort -u > cves.md
+          {
+            echo "### $TEMPLATE: \`$IMAGE\`"
+            echo
+            echo "Fixable CRITICAL: $count"
+            cat cves.md
+          } >> "$GITHUB_STEP_SUMMARY"
+          rebuild=false
+          if [ "$count" != 0 ] || [ "$FORCE" = true ]; then rebuild=true; fi
+          echo "rebuild=$rebuild" >> "$GITHUB_OUTPUT"
+
+      - name: Skip if a rebuild PR is already open
+        id: open
+        if: steps.scan.outputs.rebuild == 'true'
+        run: |
+          pr="$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --json number,headRefName \
+            --jq ".[] | select(.headRefName | startswith(\"auto/rebuild-$TEMPLATE-\")) | .number" | sed -n 1p)"
+          if [ -n "$pr" ]; then
+            echo "::notice::Rebuild PR #$pr is already open for $TEMPLATE"
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Next patch tag
+        id: next
+        if: steps.open.outputs.go == 'true'
         env:
           IMAGE: ${{ steps.ref.outputs.image }}
         run: |
-          docker pull -q "$IMAGE"
-          docker run --rm \
-            -v /var/run/docker.sock:/var/run/docker.sock \
-            aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa image \
-            --scanners vuln --severity CRITICAL --ignore-unfixed --exit-code 1 \
-            --no-progress "$IMAGE"
+          image="$(scripts/next-tag.sh "$IMAGE")"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "Rebuild: $IMAGE -> $image"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        if: steps.open.outputs.go == 'true'
+
+      - name: Rebuild (no cache, fresh base image)
+        if: steps.open.outputs.go == 'true'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ${{ matrix.template }}/build
+          platforms: linux/amd64
+          no-cache: true
+          pull: true
+          load: true
+          push: false
+          tags: ${{ steps.next.outputs.image }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.title=coder-workspace-${{ matrix.template }}
+
+      - name: Scan the rebuilt image (must be clean)
+        if: steps.open.outputs.go == 'true'
+        env:
+          IMAGE: ${{ steps.next.outputs.image }}
+        run: |
+          scripts/trivy-scan.sh "$IMAGE" || {
+            echo "::error::$TEMPLATE: the rebuild still has fixable CRITICAL vulnerabilities. Fix build/ by hand."
+            exit 1
+          }
+
+      - name: Smoke test
+        if: steps.open.outputs.go == 'true'
+        env:
+          IMAGE: ${{ steps.next.outputs.image }}
+        run: tests/smoke.sh "$TEMPLATE" "$IMAGE"
+
+      - name: Push
+        if: steps.open.outputs.go == 'true'
+        env:
+          IMAGE: ${{ steps.next.outputs.image }}
+        run: docker push "$IMAGE"
+
+      - name: Open the tag-bump PR (auto-merge)
+        if: steps.open.outputs.go == 'true'
+        env:
+          OLD: ${{ steps.ref.outputs.image }}
+          NEW: ${{ steps.next.outputs.image }}
+        run: |
+          tag="${NEW##*:}"
+          branch="auto/rebuild-$TEMPLATE-$tag"
+          file="$TEMPLATE/main.tf"
+          repo="repos/$GITHUB_REPOSITORY"
+
+          content="$(<"$file")"
+          printf '%s\n' "${content//\"$OLD\"/\"$NEW\"}" > main.tf.new
+          if cmp -s "$file" main.tf.new; then
+            echo "::error::$OLD not found in $file"; exit 1
+          fi
+
+          # Branch and commit through the API: no Git credentials on disk.
+          gh api "$repo/git/refs" -f ref="refs/heads/$branch" -f sha="$GITHUB_SHA" >/dev/null
+          blob="$(gh api "$repo/contents/$file?ref=$branch" --jq .sha)"
+          gh api -X PUT "$repo/contents/$file" \
+            -f message="$TEMPLATE: rebuild image as $tag (security)" \
+            -f content="$(base64 -w0 main.tf.new)" -f sha="$blob" -f branch="$branch" >/dev/null
+
+          {
+            echo "Automatic rebuild of \`$TEMPLATE\` by the \`scan\` workflow."
+            echo
+            echo "- Image: \`$OLD\` -> \`$NEW\` (already pushed)"
+            echo "- Built from $GITHUB_SHA with no cache and a fresh base image"
+            echo "- trivy: no fixable CRITICAL; smoke test passed"
+            echo
+            if [ -s cves.md ]; then
+              echo "Fixable CRITICAL in the old image:"
+              cat cves.md
+            else
+              echo "Forced rebuild (no CVE found)."
+            fi
+            echo
+            echo "Merges itself when the required checks pass. Then release it in Coder:"
+            echo "\`just release $TEMPLATE <version> \"Security rebuild\"\`"
+          } > body.md
+          url="$(gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$branch" \
+            --title "$TEMPLATE: security rebuild $tag" --body-file body.md)"
+          echo "PR: $url" | tee -a "$GITHUB_STEP_SUMMARY"
+
+          gh workflow run checks.yml --repo "$GITHUB_REPOSITORY" --ref "$branch" -f base="$GITHUB_SHA"
+          gh pr merge --repo "$GITHUB_REPOSITORY" --auto --merge "$url"

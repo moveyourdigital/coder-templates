@@ -24,9 +24,9 @@
     },
     {
       "customType": "regex",
-      "description": "trivy image (tag and digest) in the workflows",
+      "description": "trivy image (tag and digest) in scripts/trivy-scan.sh",
       "managerFilePatterns": [
-        "/^\\.github/workflows/.+\\.yml$/"
+        "/^scripts/trivy-scan\\.sh$/"
       ],
       "matchStrings": [
         "(?<depName>aquasec/trivy):(?<currentValue>[0-9][^\\s@\"]*)@(?<currentDigest>sha256:[a-f0-9]{64})"

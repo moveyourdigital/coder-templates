@@ -35,6 +35,7 @@ tag `<template>/<version>`, for example `node-js/v0.4.1`.
 | `main.tf` only (script, parameter, pinned mise tool) | Patch | Unchanged |
 | Anything under `build/` | Minor | New tag = new version |
 | Breaking for users (volumes, removed tools) | Major | New tag = new version |
+| Security rebuild (automatic, `scan.yml`; `build/` unchanged) | Patch | New patch tag |
 
 The image tag is set in `main.tf` (`docker_image.workspace.name`).
 
@@ -85,7 +86,8 @@ Every template must declare each variable in the file.
   `just lint` includes `shellcheck`, `actionlint` and `zizmor` (security
   audit of the workflows; actions are pinned by commit SHA).
 - `image-tag`: `just check-tags`. A change under `build/` needs a new image
-  tag, and the new tag must not be in GHCR yet.
+  tag. A new tag must not be in GHCR yet, unless that image was built from
+  the same `build/` (see below).
 - `images`: builds each image that has a new tag, scans it with trivy and
   runs `tests/smoke.sh` (tools, Claude Code policy readable by `coder`,
   code-server starts). Locally: `just build-local <t>`, then `just smoke <t>`.
@@ -95,8 +97,25 @@ Make these checks required in the branch protection of `main`.
 ## Scheduled scan and updates
 
 - `.github/workflows/scan.yml` scans the published images (the tags in
-  `main.tf`) with trivy every Monday. New CVEs appear after a build. A failure
-  means: fix `build/`, bump the tag, release.
+  `main.tf`) with trivy every day. New CVEs appear after a build. On a
+  fixable CRITICAL vulnerability it rebuilds the image automatically:
+  1. Rebuild `build/` from `main` with no cache and a fresh base image.
+  2. trivy must be clean and `tests/smoke.sh` must pass.
+  3. Push the next patch tag (for example `v0.6.0` → `v0.6.1`).
+  4. Open a PR (`auto/rebuild-<template>-<tag>`) that bumps the tag in
+     `main.tf`, start `checks.yml` on it and enable auto-merge.
+  5. The PR merges itself when the required checks pass.
+
+  If the rebuilt image is still vulnerable (for example a CVE in code that
+  code-server bundles), the job fails and a person must fix `build/`.
+  Releasing the new version in Coder stays manual: `just release`.
+  To test the flow: Actions → scan → Run workflow → `rebuild: <template>`.
+- Repository settings for the rebuild: "Allow auto-merge" (Settings →
+  General) and "Allow GitHub Actions to create and approve pull requests"
+  (Settings → Actions → General).
+- `just check-tags` accepts a tag that is already in GHCR only if the image
+  was built from the same `build/` (its `org.opencontainers.image.revision`
+  label). This allows the rebuild PRs and rollbacks, never a re-push.
 - Renovate (`renovate.json`) opens update PRs for GitHub Actions (SHA pins),
   the base image, code-server, trivy, `.mise.toml` tools and Terraform
   providers, 14 days after release. A PR that changes `build/` needs a new
