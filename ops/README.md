@@ -92,8 +92,10 @@ wrangler login                             # or CLOUDFLARE_API_TOKEN in a local 
 coder login https://<coder-url>
 ```
 
-OneDev (`tod`): add the Coder user secrets `ONEDEV_SERVER_URL` and
-`ONEDEV_TOKEN` (OneDev: avatar → Access Tokens), or run `tod config set`.
+OneDev (`tod`): store your OneDev access token (avatar → Access Tokens) as the
+Coder user secret `ONEDEV_TOKEN`
+(`printf %s "<token>" | coder secret create onedev-token --env ONEDEV_TOKEN`),
+then restart the workspace. The OneDev URL is preset by the template.
 
 Use tokens with the minimum scope for the task.
 

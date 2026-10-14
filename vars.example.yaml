@@ -1,3 +1,4 @@
 # Copy to vars.yaml (not in Git) and set the values.
 # `just push` passes vars.yaml to `coder templates push --variables-file`.
 extra_git_hosts: ""   # space-separated host names, e.g. "git.example.com"
+onedev_url: ""        # e.g. "https://onedev.example.com" (default tod server)

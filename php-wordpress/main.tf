@@ -29,6 +29,17 @@ variable "extra_git_hosts" {
   }
 }
 
+variable "onedev_url" {
+  description = "Default OneDev server URL for the tod CLI (e.g. https://onedev.example.com). A user secret ONEDEV_SERVER_URL or the tod config file wins."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.onedev_url == "" || can(regex("^https://[A-Za-z0-9.-]+(:[0-9]+)?/?$", var.onedev_url))
+    error_message = "Use an https:// URL without a path, or leave it empty."
+  }
+}
+
 locals {
   template_slug = "php-wordpress"
   preview_port  = 8080
@@ -103,6 +114,8 @@ resource "coder_agent" "main" {
     REPO_URL   = data.coder_parameter.repo_url.value
     GIT_REF    = data.coder_parameter.git_ref.value
     MISE_TOOLS = "${data.coder_parameter.node_version.value} ${data.coder_parameter.extra_mise_tools.value}"
+    # Default for tod; the tod wrapper uses it only as the last fallback.
+    ONEDEV_DEFAULT_SERVER_URL = var.onedev_url
   }
 
   # Git over SSH uses `coder gitssh` (GIT_SSH_COMMAND is set by the agent).
@@ -316,7 +329,7 @@ resource "docker_image" "workspace" {
   # Built from build/ by GitHub Actions (.github/workflows/images.yml) and
   # pushed to GHCR. Not built on x1-hel1. Tags are immutable: a change under
   # build/ needs a new tag here.
-  name         = "ghcr.io/moveyourdigital/coder-workspace-php-wordpress:v0.8.0"
+  name         = "ghcr.io/moveyourdigital/coder-workspace-php-wordpress:v0.9.0"
   keep_locally = true
 }
 

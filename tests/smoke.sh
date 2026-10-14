@@ -25,6 +25,9 @@ common='
   # The wrapper maps the Coder user secret ONEDEV_TOKEN to ONEDEV_ACCESS_TOKEN
   test -z "$(env -u ONEDEV_ACCESS_TOKEN -u ONEDEV_TOKEN tod config get access-token)"
   test -n "$(env -u ONEDEV_ACCESS_TOKEN ONEDEV_TOKEN=x tod config get access-token)"
+  # ...and uses the template default URL when nothing else sets one
+  test "$(env -u ONEDEV_SERVER_URL ONEDEV_DEFAULT_SERVER_URL=https://d.example tod config get server-url)" = https://d.example
+  test "$(ONEDEV_SERVER_URL=https://u.example ONEDEV_DEFAULT_SERVER_URL=https://d.example tod config get server-url)" = https://u.example
   n=0
   for f in /etc/claude-code/.claude/skills/*/SKILL.md; do test -r "$f" && n=$((n + 1)); done
   test "$n" -ge 8 || { echo "tod skills: $n readable, want 8+" >&2; exit 1; }
