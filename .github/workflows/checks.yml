@@ -59,6 +59,10 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha || inputs.base }}
         run: |
           [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::base must be a commit SHA"; exit 1; }
+          # A dispatched base must be a commit on main (not the branch itself),
+          # or check-tags would compare the branch with itself.
+          git merge-base --is-ancestor "$BASE_SHA" origin/main \
+            || { echo "::error::base $BASE_SHA is not a commit on main"; exit 1; }
           just check-tags "$BASE_SHA"
 
   images:

@@ -66,7 +66,13 @@ check-tags base="origin/main":
           # (security rebuild by scan.yml, or a rollback). Never re-pushed.
           rev="$(scripts/image-revision.sh "$new")" || { err "$t/main.tf" "cannot read the revision of $new"; fail=1; continue; }
           if git cat-file -e "$rev^{commit}" 2>/dev/null && git diff --quiet "$rev" HEAD -- "$t/build"; then
-            echo "ok: $t (existing tag, same build/ as ${rev:0:7}: $new)"
+            # The build workflow skips existing tags: scan it here, it may
+            # have CVEs found after it was built.
+            if docker pull -q "$new" >/dev/null && scripts/trivy-scan.sh "$new"; then
+              echo "ok: $t (existing tag, same build/ as ${rev:0:7}, trivy clean: $new)"
+            else
+              err "$t/main.tf" "existing tag has fixable CRITICAL vulnerabilities (or the scan failed): $new"; fail=1
+            fi
           else
             err "$t/main.tf" "tag already in GHCR, built from a different build/ (${rev:0:7}): $new"; fail=1
           fi

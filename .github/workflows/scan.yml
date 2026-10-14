@@ -38,6 +38,8 @@ concurrency:
 
 jobs:
   scan:
+    # Write permissions: only for main (a manual run can pick any branch).
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     permissions:
       contents: write        # branch + commit for the tag bump (API)
