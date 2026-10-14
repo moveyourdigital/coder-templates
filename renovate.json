@@ -24,6 +24,19 @@
     },
     {
       "customType": "regex",
+      "description": "Docker Engine version (apt package) in the Dockerfiles",
+      "managerFilePatterns": [
+        "/(^|/)build/Dockerfile$/"
+      ],
+      "matchStrings": [
+        "ARG DOCKER_VERSION=5:(?<currentValue>\\d+\\.\\d+\\.\\d+)-1~ubuntu"
+      ],
+      "datasourceTemplate": "github-tags",
+      "depNameTemplate": "docker/cli",
+      "extractVersionTemplate": "^v(?<version>\\d+\\.\\d+\\.\\d+)$"
+    },
+    {
+      "customType": "regex",
       "description": "trivy image (tag and digest) in scripts/trivy-scan.sh",
       "managerFilePatterns": [
         "/^scripts/trivy-scan\\.sh$/"
