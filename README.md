@@ -103,8 +103,10 @@ Make these checks required in the branch protection of `main`.
   2. trivy must be clean and `tests/smoke.sh` must pass.
   3. Push the next patch tag (for example `v0.6.0` → `v0.6.1`).
   4. Open a PR (`auto/rebuild-<template>-<tag>`) that bumps the tag in
-     `main.tf`, start `checks.yml` on it and enable auto-merge.
-  5. The PR merges itself when the required checks pass.
+     `main.tf` and enable auto-merge.
+  5. **You** click "Approve workflows to run" on the PR. GitHub holds the
+     checks of a PR opened by GitHub Actions until a person approves them.
+  6. The PR merges itself when the required checks pass.
 
   If the rebuilt image is still vulnerable (for example a CVE in code that
   code-server bundles), the job fails and a person must fix `build/`.
